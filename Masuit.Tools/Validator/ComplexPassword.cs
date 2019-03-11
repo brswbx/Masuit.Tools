@@ -1,13 +1,18 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 
-namespace Masuit.Tools.Validator
+namespace Masuit.Tools.Core.Validator
 {
     /// <summary>
     /// 强密码验证
     /// </summary>
     public class ComplexPassword : ValidationAttribute
     {
+        /// <summary>
+        /// 校验密码强度
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
         public override bool IsValid(object value)
         {
             string pwd = value as string;

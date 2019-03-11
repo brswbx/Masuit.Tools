@@ -54,6 +54,22 @@ namespace Masuit.Tools.Files
         }
 
         /// <summary>
+        /// 将内存流转储成文件
+        /// </summary>
+        /// <param name="ms"></param>
+        /// <param name="filename"></param>
+        public static void SaveFile(this MemoryStream ms, string filename)
+        {
+            using (var fs = new FileStream(filename, FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            {
+                byte[] buffer = ms.ToArray(); // 转化为byte格式存储
+                fs.Write(buffer, 0, buffer.Length);
+                fs.Flush();
+                buffer = null;
+            }
+        }
+
+        /// <summary>
         /// 计算文件的 MD5 值
         /// </summary>
         /// <param name="fs">源文件流</param>
@@ -118,6 +134,7 @@ namespace Masuit.Tools.Files
             {
                 throw new ArgumentNullException("algName 不能为 null");
             }
+
             if (string.Compare(algName, "sha1", true) == 0)
             {
                 algorithm = System.Security.Cryptography.SHA1.Create();
@@ -128,8 +145,10 @@ namespace Masuit.Tools.Files
                 {
                     throw new Exception("algName 只能使用 sha1 或 md5");
                 }
+
                 algorithm = System.Security.Cryptography.MD5.Create();
             }
+
             return algorithm.ComputeHash(stream);
         }
 
@@ -146,6 +165,7 @@ namespace Masuit.Tools.Files
             {
                 throw new ArgumentNullException("algName 不能为 null");
             }
+
             if (string.Compare(algName, "sha1", true) == 0)
             {
                 algorithm = System.Security.Cryptography.SHA1.Create();
@@ -156,10 +176,11 @@ namespace Masuit.Tools.Files
                 {
                     throw new Exception("algName 只能使用 sha1 或 md5");
                 }
+
                 algorithm = System.Security.Cryptography.MD5.Create();
             }
-            return await Task.Run(() => algorithm.ComputeHash(stream)).ConfigureAwait(false);
 
+            return await Task.Run(() => algorithm.ComputeHash(stream)).ConfigureAwait(false);
         }
 
         /// <summary>

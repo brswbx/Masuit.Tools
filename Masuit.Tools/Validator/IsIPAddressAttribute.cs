@@ -1,12 +1,17 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace Masuit.Tools.Validator
+namespace Masuit.Tools.Core.Validator
 {
     /// <summary>
     /// 验证IPv4地址是否合法
     /// </summary>
     public class IsIPAddressAttribute : ValidationAttribute
     {
+        /// <summary>
+        /// 验证IPv4地址是否合法
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
         public override bool IsValid(object value)
         {
             if (value is null)

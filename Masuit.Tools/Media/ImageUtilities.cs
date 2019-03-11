@@ -4,8 +4,6 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading.Tasks;
 
 namespace Masuit.Tools.Media
@@ -242,7 +240,7 @@ namespace Masuit.Tools.Media
                     ImageCodecInfo ici = null;
                     foreach (ImageCodecInfo i in icis)
                     {
-                        if ((i.MimeType == "image/jpeg") || (i.MimeType == "image/bmp") || (i.MimeType == "image/png") || (i.MimeType == "image/gif"))
+                        if (i.MimeType == "image/jpeg" || i.MimeType == "image/bmp" || i.MimeType == "image/png" || i.MimeType == "image/gif")
                             ici = i;
                     }
 
@@ -481,12 +479,13 @@ namespace Masuit.Tools.Media
         /// <returns>剪裁后的Bitmap</returns>
         public static Bitmap CutImage(this Bitmap b, Rectangle rec)
         {
-            if (b == null)
-                return null;
             int w = b.Width;
             int h = b.Height;
             if ((rec.X >= w) || (rec.Y >= h))
+            {
                 return null;
+            }
+
             if (rec.X + rec.Width > w)
                 rec.Width = w - rec.X;
             if (rec.Y + rec.Height > h)
@@ -752,7 +751,7 @@ namespace Masuit.Tools.Media
         /// <param name="width">缩略图宽度</param>
         /// <param name="height">缩略图高度</param>
         /// <param name="mode">生成缩略图的方式</param>    
-        public static void MakeThumbnail(this Image originalImage, string thumbnailPath, int width, int height, string mode)
+        public static void MakeThumbnail(this Image originalImage, string thumbnailPath, int width, int height, ThumbnailCutMode mode)
         {
             int towidth = width;
             int toheight = height;
@@ -764,15 +763,15 @@ namespace Masuit.Tools.Media
 
             switch (mode)
             {
-                case "HW": //指定高宽缩放（可能变形）                
+                case ThumbnailCutMode.Fixed: //指定高宽缩放（可能变形）                
                     break;
-                case "W": //指定宽，高按比例                    
+                case ThumbnailCutMode.LockWidth: //指定宽，高按比例                    
                     toheight = originalImage.Height * width / originalImage.Width;
                     break;
-                case "H": //指定高，宽按比例
+                case ThumbnailCutMode.LockHeight: //指定高，宽按比例
                     towidth = originalImage.Width * height / originalImage.Height;
                     break;
-                case "Cut": //指定高宽裁减（不变形）                
+                case ThumbnailCutMode.Cut: //指定高宽裁减（不变形）                
                     if (originalImage.Width / (double)originalImage.Height > towidth / (double)toheight)
                     {
                         oh = originalImage.Height;
@@ -839,12 +838,11 @@ namespace Masuit.Tools.Media
         {
             Bitmap bm = new Bitmap(width, height); //初始化一个记录经过处理后的图片对象
             int x, y; //x、y是循环次数，后面三个是记录红绿蓝三个值的
-            Color pixel;
             for (x = 0; x < width; x++)
             {
                 for (y = 0; y < height; y++)
                 {
-                    pixel = mybm.GetPixel(x, y); //获取当前像素的值
+                    var pixel = mybm.GetPixel(x, y);
                     var resultR = pixel.R + val; //x、y是循环次数，后面三个是记录红绿蓝三个值的
                     var resultG = pixel.G + val; //x、y是循环次数，后面三个是记录红绿蓝三个值的
                     var resultB = pixel.B + val; //x、y是循环次数，后面三个是记录红绿蓝三个值的
@@ -997,12 +995,11 @@ namespace Masuit.Tools.Media
             using (Bitmap bm = new Bitmap(width, height))
             {
                 int x, y, z; //x,y是循环次数,z是用来记录像素点的x坐标的变化的
-                Color pixel;
                 for (y = height - 1; y >= 0; y--)
                 {
                     for (x = width - 1, z = 0; x >= 0; x--)
                     {
-                        pixel = mybm.GetPixel(x, y); //获取当前像素的值
+                        var pixel = mybm.GetPixel(x, y);
                         bm.SetPixel(z++, y, Color.FromArgb(pixel.R, pixel.G, pixel.B)); //绘图
                     }
                 }
@@ -1027,12 +1024,11 @@ namespace Masuit.Tools.Media
             using (bm)
             {
                 int x, y, z;
-                Color pixel;
                 for (x = 0; x < width; x++)
                 {
                     for (y = height - 1, z = 0; y >= 0; y--)
                     {
-                        pixel = mybm.GetPixel(x, y); //获取当前像素的值
+                        var pixel = mybm.GetPixel(x, y);
                         bm.SetPixel(x, z++, Color.FromArgb(pixel.R, pixel.G, pixel.B)); //绘图
                     }
                 }
@@ -1117,14 +1113,13 @@ namespace Masuit.Tools.Media
             Bitmap bm = new Bitmap(width, height);
             using (bm)
             {
-                int x, y, result; //x,y是循环次数，result是记录处理后的像素值
-                Color pixel;
+                int x, y; //x,y是循环次数
                 for (x = 0; x < width; x++)
                 {
                     for (y = 0; y < height; y++)
                     {
-                        pixel = mybm.GetPixel(x, y); //获取当前坐标的像素值
-                        result = (pixel.R + pixel.G + pixel.B) / 3; //取红绿蓝三色的平均值
+                        var pixel = mybm.GetPixel(x, y);
+                        var result = (pixel.R + pixel.G + pixel.B) / 3; //记录处理后的像素值
                         bm.SetPixel(x, y, Color.FromArgb(result, result, result));
                     }
                 }
@@ -1184,56 +1179,6 @@ namespace Masuit.Tools.Media
                 }
             }
             return bmp2;
-        }
-
-        /// <summary>
-        /// 上传图片到百度图床
-        /// </summary>
-        /// <param name="stream"></param>
-        /// <returns></returns>
-        public static async Task<string> UploadImageAsync(Stream stream)
-        {
-            using (HttpClient httpClient = new HttpClient()
-            {
-                BaseAddress = new Uri("https://sm.ms"),
-            })
-            {
-                httpClient.DefaultRequestHeaders.UserAgent.Add(ProductInfoHeaderValue.Parse("Mozilla/5.0"));
-                using (var bc = new StreamContent(stream))
-                {
-                    bc.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment")
-                    {
-                        FileName = "1.jpg",
-                        Name = "smfile"
-                    };
-                    bc.Headers.ContentType = MediaTypeHeaderValue.Parse("image/jpeg");
-                    using (var content = new MultipartFormDataContent { bc })
-                    {
-                        return await await httpClient.PostAsync("/api/upload", content).ContinueWith(async t =>
-                        {
-                            if (t.IsCanceled || t.IsFaulted)
-                            {
-                                Console.WriteLine("发送请求出错了" + t.Exception);
-                                return string.Empty;
-                            }
-                            var res = await t;
-                            if (res.IsSuccessStatusCode)
-                            {
-                                string s = await res.Content.ReadAsStringAsync();
-                                //var token = JObject.Parse(s);
-                                //if ((int)token["errno"] == 0)
-                                //{
-                                //    s = (string)token["data"]["imageUrl"];
-                                //    return s;
-                                //}
-                                //s = (string)token["errmsg"];
-                                return s;
-                            }
-                            return string.Empty;
-                        });
-                    }
-                }
-            }
         }
     } //end class
 }

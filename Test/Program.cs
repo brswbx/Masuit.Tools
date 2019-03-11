@@ -1,41 +1,15 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Threading.Tasks;
-using Masuit.Tools;
-using Masuit.Tools.Systems;
+﻿using Masuit.Tools.Security;
+using System;
 
 namespace Test
 {
-    internal static class Program
+    static class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("".CreateShortToken(26));
-            //var redisLock = new RedisLock();
-        }
-
-        public static ConcurrentDictionary<string, object> LockDic { get; set; } = new ConcurrentDictionary<string, object>();
-        public static int Count { get; set; }
-        public static async Task<string> Test()
-        {
-            //using (new AsyncLock(LockDic.GetOrAdd("aa", new object())).LockAsync())
-            {
-                await Task.Run(() =>
-                {
-                    for (int i = 0; i < 100; i++)
-                    {
-                        Count++;
-                    }
-                });
-                await Task.Run(() =>
-                {
-                    for (int i = 0; i < 100; i++)
-                    {
-                        Count--;
-                    }
-                });
-                return "";
-            }
+            RsaKey keys = RsaCrypt.GenerateRsaKeys();
+            Console.WriteLine(keys.PublicKey);
+            Console.WriteLine(keys.PrivateKey);
         }
     }
 }

@@ -1,20 +1,29 @@
-﻿using System;
+﻿using StackExchange.Redis;
+using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
-using StackExchange.Redis;
 
 namespace Masuit.Tools.Systems
 {
+    /// <summary>
+    /// Redis分布式锁
+    /// </summary>
     public class RedisLock : IDisposable
     {
         #region Property
-        private bool isDisposed;
+
+        private bool _isDisposed;
+
+        /// <summary>
+        /// 终结器
+        /// </summary>
         ~RedisLock()
         {
             Dispose(false);
         }
+
         /// <summary>
         /// KEYS[1] ：需要加锁的key，这里需要是字符串类型。
         /// ARGV[1] ：锁的超时时间，防止死锁
@@ -75,6 +84,7 @@ namespace Masuit.Tools.Systems
         #endregion
 
         #region Constructor
+
         /// <summary>
         /// 默认连接127.0.0.1:6379,synctimeout=20000
         /// </summary>
@@ -164,10 +174,23 @@ namespace Masuit.Tools.Systems
         /// <returns></returns>
         public RedisResult UnLock(Lock lockObject)
         {
-            if (lockObject == null) return null;
+            if (lockObject == null)
+            {
+                return null;
+            }
+
             CancelExpirationRenewal(lockObject);
-            RedisKey[] key = { lockObject.Resource, GetChannelName(lockObject.Resource) };
-            RedisValue[] values = { Thread.CurrentThread.ManagedThreadId, 10000, lockObject.Value };
+            RedisKey[] key =
+            {
+                lockObject.Resource,
+                GetChannelName(lockObject.Resource)
+            };
+            RedisValue[] values =
+            {
+                Thread.CurrentThread.ManagedThreadId,
+                10000,
+                lockObject.Value
+            };
             return _server.GetDatabase().ScriptEvaluate(UnLockScript, key, values);
         }
 
@@ -210,8 +233,15 @@ namespace Masuit.Tools.Systems
 
         private RedisResult LockInnerAsync(RedisKey resource, TimeSpan waitTime, string threadId)
         {
-            RedisKey[] key = { resource };
-            RedisValue[] values = { waitTime.TotalMilliseconds, threadId };
+            RedisKey[] key =
+            {
+                resource
+            };
+            RedisValue[] values =
+            {
+                waitTime.TotalMilliseconds,
+                threadId
+            };
             return _server.GetDatabase().ScriptEvaluate(LockScript, key, values);
         }
 
@@ -221,13 +251,21 @@ namespace Masuit.Tools.Systems
             return task;
         }
 
+        /// <summary>
+        /// 创建唯一锁id
+        /// </summary>
+        /// <returns></returns>
         protected static string CreateUniqueLockId()
         {
             return string.Concat(Guid.NewGuid().ToString(), Thread.CurrentThread.ManagedThreadId);
         }
 
+        /// <summary>
+        /// 设置超时
+        /// </summary>
+        /// <param name="doWork"></param>
+        /// <param name="time"></param>
         protected void SetTimeOut(ElapsedEventHandler doWork, int time)
-
         {
             System.Timers.Timer timer = new System.Timers.Timer();
             timer.Interval = time;
@@ -236,10 +274,17 @@ namespace Masuit.Tools.Systems
             timer.Start();
         }
 
+        /// <summary>
+        /// 任务超时
+        /// </summary>
+        /// <param name="action"></param>
+        /// <param name="lockObj"></param>
+        /// <param name="time"></param>
+        /// <returns></returns>
         protected CancellationTokenSource TaskTimeOut(Func<Lock, bool> action, Lock lockObj, int time)
         {
             var timeoutCancellationTokenSource = new CancellationTokenSource();
-            var task = Task.Run(() =>
+            Task.Run(() =>
             {
                 SpinWait.SpinUntil(() => !timeoutCancellationTokenSource.IsCancellationRequested);
             }, timeoutCancellationTokenSource.Token);
@@ -286,14 +331,19 @@ namespace Masuit.Tools.Systems
             GC.SuppressFinalize(this);
         }
 
+        /// <summary>
+        /// 释放锁
+        /// </summary>
+        /// <param name="disposing"></param>
         public virtual void Dispose(bool disposing)
         {
-            if (isDisposed)
+            if (_isDisposed)
             {
                 return;
             }
+
             _server?.Dispose();
-            isDisposed = true;
+            _isDisposed = true;
             //_server = null;
         }
     }

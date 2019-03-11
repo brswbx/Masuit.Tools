@@ -8,7 +8,7 @@ namespace Masuit.Tools.Security
     /// <summary>
     /// RSA密钥对
     /// </summary>
-    public struct RsaKey
+    public class RsaKey
     {
         /// <summary>
         /// 公钥
@@ -20,11 +20,13 @@ namespace Masuit.Tools.Security
         /// </summary>
         public string PrivateKey;
     }
+
     /// <summary> 
     /// RSA加密解密及RSA签名和验证
     /// </summary> 
     public static class RsaCrypt
     {
+        private static RsaKey RsaKey = GenerateRsaKeys();
         #region RSA 加密解密 
 
         #region RSA 的密钥产生 
@@ -36,7 +38,11 @@ namespace Masuit.Tools.Security
         {
             using (var rsa = new RSACryptoServiceProvider())
             {
-                return new RsaKey { PrivateKey = rsa.ToXmlString(true), PublicKey = rsa.ToXmlString(false) };
+                return RsaKey ?? (RsaKey = new RsaKey
+                {
+                    PrivateKey = rsa.ToXmlString(true),
+                    PublicKey = rsa.ToXmlString(false)
+                });
             }
         }
 
@@ -44,13 +50,6 @@ namespace Masuit.Tools.Security
 
         #region RSA的加密函数 
 
-        //############################################################################## 
-        //RSA 方式加密 
-        //说明KEY必须是XML的行式,返回的是字符串 
-        //在有一点需要说明！！该加密方式有 长度 限制的！！ 
-        //############################################################################## 
-
-        //RSA的加密函数  string
         /// <summary>
         /// RSA的加密函数 string
         /// </summary>
@@ -67,7 +66,17 @@ namespace Masuit.Tools.Security
             return Convert.ToBase64String(cypherTextBArray);
         }
 
-        //RSA的加密函数 byte[]
+        /// <summary>
+        /// RSA的加密函数 string
+        /// </summary>
+        /// <param name="mStrEncryptString">需要加密的字符串</param>
+        /// <returns>加密后的内容</returns>
+        /// <exception cref="CryptographicException">The cryptographic service provider (CSP) cannot be acquired. </exception>
+        public static string RSAEncrypt(this string mStrEncryptString)
+        {
+            return RSAEncrypt(mStrEncryptString, RsaKey.PublicKey);
+        }
+
         /// <summary>
         /// RSA的加密函数 byte[]
         /// </summary>
@@ -83,11 +92,21 @@ namespace Masuit.Tools.Security
             return Convert.ToBase64String(cypherTextBArray);
         }
 
+        /// <summary>
+        /// RSA的加密函数 byte[]
+        /// </summary>
+        /// <param name="encryptString">需要加密的字节数组</param>
+        /// <returns>加密后的内容</returns>
+        /// <exception cref="CryptographicException">The cryptographic service provider (CSP) cannot be acquired. </exception>
+        public static string RSAEncrypt(this byte[] encryptString)
+        {
+            return RSAEncrypt(encryptString, RsaKey.PublicKey);
+        }
+
         #endregion
 
         #region RSA的解密函数 
 
-        //RSA的解密函数  string
         /// <summary>
         /// RSA的解密函数  string
         /// </summary>
@@ -104,7 +123,17 @@ namespace Masuit.Tools.Security
             return new UnicodeEncoding().GetString(dypherTextBArray);
         }
 
-        //RSA的解密函数  byte
+        /// <summary>
+        /// RSA的解密函数  string
+        /// </summary>
+        /// <param name="mStrDecryptString">需要解密的字符串</param>
+        /// <returns>解密后的内容</returns>
+        /// <exception cref="CryptographicException">The cryptographic service provider (CSP) cannot be acquired. </exception>
+        public static string RSADecrypt(this string mStrDecryptString)
+        {
+            return RSADecrypt(mStrDecryptString, RsaKey.PrivateKey);
+        }
+
         /// <summary>
         /// RSA的解密函数  byte
         /// </summary>
@@ -118,6 +147,17 @@ namespace Masuit.Tools.Security
             rsa.FromXmlString(privateKey);
             var dypherTextBArray = rsa.Decrypt(decryptString, false);
             return new UnicodeEncoding().GetString(dypherTextBArray);
+        }
+
+        /// <summary>
+        /// RSA的解密函数  byte
+        /// </summary>
+        /// <param name="decryptString">需要解密的字符串</param>
+        /// <returns>解密后的内容</returns>
+        /// <exception cref="CryptographicException">The cryptographic service provider (CSP) cannot be acquired. </exception>
+        public static string RSADecrypt(this byte[] decryptString)
+        {
+            return RSADecrypt(decryptString, RsaKey.PrivateKey);
         }
 
         #endregion

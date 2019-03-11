@@ -6,14 +6,30 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 
-namespace Masuit.Tools.Core.Net
+namespace Masuit.Tools.Net
 {
+    /// <summary>
+    /// 部分下载器
+    /// </summary>
     public class PartialDownloader
     {
         #region Variables
+
+        /// <summary>
+        /// 这部分完成事件
+        /// </summary>
         public event EventHandler DownloadPartCompleted;
+
+        /// <summary>
+        /// 部分下载进度改变事件
+        /// </summary>
         public event EventHandler DownloadPartProgressChanged;
+
+        /// <summary>
+        /// 部分下载停止事件
+        /// </summary>
         public event EventHandler DownloadPartStopped;
+
         HttpWebRequest _req;
         HttpWebResponse _resp;
         Stream _tempStream;
@@ -23,9 +39,20 @@ namespace Masuit.Tools.Core.Net
         readonly int[] _lastSpeeds;
         int _counter;
         bool _stop, _wait;
+
         #endregion
 
         #region PartialDownloader
+
+        /// <summary>
+        /// 部分块下载
+        /// </summary>
+        /// <param name="url"></param>
+        /// <param name="dir"></param>
+        /// <param name="fileGuid"></param>
+        /// <param name="from"></param>
+        /// <param name="to"></param>
+        /// <param name="rangeAllowed"></param>
         public PartialDownloader(string url, string dir, string fileGuid, int from, int to, bool rangeAllowed)
         {
             _from = from;
@@ -37,12 +64,15 @@ namespace Masuit.Tools.Core.Net
             _lastSpeeds = new int[10];
             _stp = new Stopwatch();
         }
+
         #endregion
 
         void DownloadProcedure()
         {
             _file = new FileStream(FullPath, FileMode.Create, FileAccess.ReadWrite);
+
             #region Request-Response
+
             _req = WebRequest.Create(_url) as HttpWebRequest;
             if (_req != null)
             {
@@ -52,7 +82,7 @@ namespace Masuit.Tools.Core.Net
                 _req.ServicePoint.ConnectionLimit += 1;
                 _req.ServicePoint.Expect100Continue = true;
                 _req.ProtocolVersion = HttpVersion.Version10;
-                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12 | SecurityProtocolType.Ssl3;
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12 | SecurityProtocolType.SystemDefault;
                 ServicePointManager.Expect100Continue = true;
                 if (_rangeAllowed)
                     _req.AddRange(_from, _to);
@@ -92,7 +122,10 @@ namespace Masuit.Tools.Core.Net
                         if (_progress != tempProgress)
                         {
                             _progress = tempProgress;
-                            _aop.Post(state => { DownloadPartProgressChanged?.Invoke(this, EventArgs.Empty); }, null);
+                            _aop.Post(state =>
+                            {
+                                DownloadPartProgressChanged?.Invoke(this, EventArgs.Empty);
+                            }, null);
                         }
 
                         if (_stop || (_rangeAllowed && _totalBytesRead == _contentLength))
@@ -114,9 +147,11 @@ namespace Masuit.Tools.Core.Net
             }
 
             _stp.Stop();
+
             #endregion
 
             #region Fire Events
+
             if (!_stop && DownloadPartCompleted != null)
                 _aop.Post(state =>
                 {
@@ -131,6 +166,10 @@ namespace Masuit.Tools.Core.Net
         }
 
         #region Public Methods
+
+        /// <summary>
+        /// 启动下载
+        /// </summary>
         public void Start()
         {
             _stop = false;
@@ -138,22 +177,34 @@ namespace Masuit.Tools.Core.Net
             procThread.Start();
         }
 
+        /// <summary>
+        /// 下载停止
+        /// </summary>
         public void Stop()
         {
             _stop = true;
         }
-        //Wait is used when repartitiate a partition securely in this project
+
+        /// <summary>
+        /// 暂停等待下载
+        /// </summary>
         public void Wait()
         {
             _wait = true;
         }
+
+        /// <summary>
+        /// 稍后唤醒
+        /// </summary>
         public void ResumeAfterWait()
         {
             _wait = false;
         }
+
         #endregion
 
         #region Property Variables
+
         private readonly int _from;
         private int _to;
         private readonly string _url;
@@ -164,27 +215,59 @@ namespace Masuit.Tools.Core.Net
         private readonly string _directory;
         private int _progress;
         private bool _completed;
+
         #endregion
 
         #region Properties
+
+        /// <summary>
+        /// 下载已停止
+        /// </summary>
         public bool Stopped => _stop;
 
+        /// <summary>
+        /// 下载已完成
+        /// </summary>
         public bool Completed => _completed;
 
+        /// <summary>
+        /// 下载进度
+        /// </summary>
         public int Progress => _progress;
 
+        /// <summary>
+        /// 下载目录
+        /// </summary>
         public string Directory => _directory;
 
+        /// <summary>
+        /// 文件名
+        /// </summary>
         public string FileName => _fileGuid;
 
+        /// <summary>
+        /// 已读字节数
+        /// </summary>
         public long TotalBytesRead => _totalBytesRead;
 
+        /// <summary>
+        /// 内容长度
+        /// </summary>
         public long ContentLength => _contentLength;
 
+        /// <summary>
+        /// RangeAllowed
+        /// </summary>
         public bool RangeAllowed => _rangeAllowed;
 
+        /// <summary>
+        /// url
+        /// </summary>
         public string Url => _url;
 
+        /// <summary>
+        /// to
+        /// </summary>
         public int To
         {
             get => _to;
@@ -195,14 +278,29 @@ namespace Masuit.Tools.Core.Net
             }
         }
 
+        /// <summary>
+        /// from
+        /// </summary>
         public int From => _from;
 
+        /// <summary>
+        /// 当前位置
+        /// </summary>
         public int CurrentPosition => _from + _totalBytesRead - 1;
 
+        /// <summary>
+        /// 剩余字节数
+        /// </summary>
         public int RemainingBytes => (int)(_contentLength - _totalBytesRead);
 
+        /// <summary>
+        /// 完整路径
+        /// </summary>
         public string FullPath => Path.Combine(_directory, _fileGuid);
 
+        /// <summary>
+        /// 下载速度
+        /// </summary>
         public int SpeedInBytes
         {
             get
@@ -215,6 +313,7 @@ namespace Masuit.Tools.Core.Net
                 return totalSpeeds / 10;
             }
         }
+
         #endregion
     }
 }

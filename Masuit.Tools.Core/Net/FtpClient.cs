@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net;
 using System.Text;
@@ -10,28 +11,66 @@ namespace Masuit.Tools.Net
     /// </summary>
     public class FtpClient
     {
-        string _ftpRemotePath;
-
         #region 变量属性
 
         /// <summary>
         /// Ftp服务器ip
         /// </summary>
-        public static string FtpServer { get; set; }
+        private string FtpServer { get; set; }
 
         /// <summary>
         /// Ftp 指定用户名
         /// </summary>
-        public static string Username { get; set; }
+        private string Username { get; set; }
 
         /// <summary>
         /// Ftp 指定用户密码
         /// </summary>
-        public static string Password { get; set; }
-
-        public static string FtpUri = "ftp://" + FtpServer + "/";
+        private string Password { get; set; }
 
         #endregion
+
+        /// <summary>
+        /// 获取一个匿名登录的ftp客户端
+        /// </summary>
+        /// <param name="serverIp">服务器IP地址</param>
+        /// <returns></returns>
+        public static FtpClient GetAnonymousClient(string serverIp)
+        {
+            if (!serverIp.MatchInetAddress())
+            {
+                throw new ArgumentException("IP地址格式不正确");
+            }
+
+            FtpClient ftpClient = new FtpClient
+            {
+                FtpServer = serverIp
+            };
+            return ftpClient;
+        }
+
+        /// <summary>
+        /// 获取一个匿名登录的ftp客户端
+        /// </summary>
+        /// <param name="serverIp">服务器ip</param>
+        /// <param name="username">用户名</param>
+        /// <param name="password">密码</param>
+        /// <returns></returns>
+        public static FtpClient GetClient(string serverIp, string username, string password)
+        {
+            if (!serverIp.MatchInetAddress())
+            {
+                throw new ArgumentException("IP地址格式不正确");
+            }
+
+            FtpClient ftpClient = new FtpClient
+            {
+                FtpServer = serverIp,
+                Username = username,
+                Password = password
+            };
+            return ftpClient;
+        }
 
         #region 从FTP服务器下载文件，指定本地路径和本地文件名
 
@@ -42,7 +81,7 @@ namespace Masuit.Tools.Net
         /// <param name="localFileName">保存本地的文件名（包含路径）</param>
         /// <param name="ifCredential">是否启用身份验证（false：表示允许用户匿名下载）</param>
         /// <param name="updateProgress">报告进度的处理(第一个参数：总大小，第二个参数：当前进度)</param>
-        public static void Download(string remoteFileName, string localFileName, bool ifCredential = false, Action<int, int> updateProgress = null)
+        public void Download(string remoteFileName, string localFileName, bool ifCredential = false, Action<int, int> updateProgress = null)
         {
             using (FileStream outputStream = new FileStream(localFileName, FileMode.Create))
             {
@@ -50,6 +89,7 @@ namespace Masuit.Tools.Net
                 {
                     throw new Exception("ftp下载目标服务器地址未设置！");
                 }
+
                 Uri uri = new Uri("ftp://" + FtpServer + "/" + remoteFileName);
                 var ftpsize = (FtpWebRequest)WebRequest.Create(uri);
                 ftpsize.UseBinary = true;
@@ -61,6 +101,7 @@ namespace Masuit.Tools.Net
                     ftpsize.Credentials = new NetworkCredential(Username, Password);
                     reqFtp.Credentials = new NetworkCredential(Username, Password);
                 }
+
                 ftpsize.Method = WebRequestMethods.Ftp.GetFileSize;
                 using (FtpWebResponse re = (FtpWebResponse)ftpsize.GetResponse())
                 {
@@ -103,7 +144,7 @@ namespace Masuit.Tools.Net
         /// <param name="ifCredential">是否启用身份验证（false：表示允许用户匿名下载）</param>
         /// <param name="size">已下载文件流大小</param>
         /// <param name="updateProgress">报告进度的处理(第一个参数：总大小，第二个参数：当前进度)</param>
-        public static void BrokenDownload(string remoteFileName, string localFileName, bool ifCredential, long size, Action<int, int> updateProgress = null)
+        public void BrokenDownload(string remoteFileName, string localFileName, bool ifCredential, long size, Action<int, int> updateProgress = null)
         {
             using (FileStream outputStream = new FileStream(localFileName, FileMode.Append))
             {
@@ -111,6 +152,7 @@ namespace Masuit.Tools.Net
                 {
                     throw new Exception("ftp下载目标服务器地址未设置！");
                 }
+
                 Uri uri = new Uri("ftp://" + FtpServer + "/" + remoteFileName);
                 var ftpsize = (FtpWebRequest)WebRequest.Create(uri);
                 ftpsize.UseBinary = true;
@@ -124,6 +166,7 @@ namespace Masuit.Tools.Net
                     ftpsize.Credentials = new NetworkCredential(Username, Password);
                     reqFtp.Credentials = new NetworkCredential(Username, Password);
                 }
+
                 ftpsize.Method = WebRequestMethods.Ftp.GetFileSize;
                 using (FtpWebResponse re = (FtpWebResponse)ftpsize.GetResponse())
                 {
@@ -163,7 +206,7 @@ namespace Masuit.Tools.Net
         /// <param name="ifCredential">是否启用身份验证（false：表示允许用户匿名下载）</param>
         /// <param name="updateProgress">报告进度的处理(第一个参数：总大小，第二个参数：当前进度)</param>
         /// <param name="brokenOpen">是否断点下载：true 会在localFileName 找是否存在已经下载的文件，并计算文件流大小</param>
-        public static void Download(string remoteFileName, string localFileName, bool ifCredential, bool brokenOpen, Action<int, int> updateProgress = null)
+        public void Download(string remoteFileName, string localFileName, bool ifCredential, bool brokenOpen, Action<int, int> updateProgress = null)
         {
             if (brokenOpen)
             {
@@ -175,8 +218,10 @@ namespace Masuit.Tools.Net
                         size = outputStream.Length;
                     }
                 }
+
                 BrokenDownload(remoteFileName, localFileName, ifCredential, size, updateProgress);
             }
+
             Download(remoteFileName, localFileName, ifCredential, updateProgress);
         }
 
@@ -187,16 +232,18 @@ namespace Masuit.Tools.Net
         /// <summary>
         /// 上传文件到FTP服务器
         /// </summary>
+        /// <param name="relativePath">相对目录</param>
         /// <param name="localFullPathName">本地带有完整路径的文件名</param>
         /// <param name="updateProgress">报告进度的处理(第一个参数：总大小，第二个参数：当前进度)</param>
-        public static void UploadFile(string localFullPathName, Action<int, int> updateProgress = null)
+        public void UploadFile(string relativePath, string localFullPathName, Action<int, int> updateProgress = null)
         {
             FileInfo finfo = new FileInfo(localFullPathName);
             if (FtpServer == null || FtpServer.Trim().Length == 0)
             {
                 throw new Exception("ftp上传目标服务器地址未设置！");
             }
-            Uri uri = new Uri("ftp://" + FtpServer + "/" + finfo.Name);
+
+            Uri uri = new Uri("ftp://" + FtpServer + "/" + relativePath + "/" + finfo.Name);
             var reqFtp = (FtpWebRequest)WebRequest.Create(uri);
             reqFtp.KeepAlive = false;
             reqFtp.UseBinary = true;
@@ -233,12 +280,13 @@ namespace Masuit.Tools.Net
         /// <param name="remoteFilepath">远程文件所在文件夹路径</param>
         /// <param name="updateProgress">报告进度的处理(第一个参数：总大小，第二个参数：当前进度)</param>
         /// <returns></returns> 
-        public static bool UploadBroken(string localFullPath, string remoteFilepath, Action<int, int> updateProgress = null)
+        public bool UploadBroken(string localFullPath, string remoteFilepath, Action<int, int> updateProgress = null)
         {
             if (remoteFilepath == null)
             {
                 remoteFilepath = "";
             }
+
             string newFileName;
             FileInfo fileInf = new FileInfo(localFullPath);
             long allbye = fileInf.Length;
@@ -251,11 +299,13 @@ namespace Masuit.Tools.Net
                 newFileName = fileInf.Name.Replace("#", "＃");
                 newFileName = RemoveSpaces(newFileName);
             }
+
             long startfilesize = GetFileSize(newFileName, remoteFilepath);
             if (startfilesize >= allbye)
             {
                 return false;
             }
+
             long startbye = startfilesize;
             //更新进度 
             updateProgress?.Invoke((int)allbye, (int)startfilesize); //更新进度条 
@@ -269,6 +319,7 @@ namespace Masuit.Tools.Net
             {
                 uri = "ftp://" + FtpServer + "/" + remoteFilepath + "/" + newFileName;
             }
+
             // 根据uri创建FtpWebRequest对象 
             var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(uri));
             // ftp用户名和密码 
@@ -304,6 +355,7 @@ namespace Masuit.Tools.Net
                     }
                 }
             }
+
             return true;
         }
 
@@ -312,7 +364,7 @@ namespace Masuit.Tools.Net
         /// </summary>
         /// <param name="str"></param>
         /// <returns></returns>
-        private static string RemoveSpaces(string str)
+        private string RemoveSpaces(string str)
         {
             string a = "";
             foreach (char c in str)
@@ -324,20 +376,21 @@ namespace Masuit.Tools.Net
                     a += c.ToString();
                 }
             }
+
             return a.Split('.')[a.Split('.').Length - 2] + "." + a.Split('.')[a.Split('.').Length - 1];
         }
 
         /// <summary>
         /// 获取已上传文件大小
         /// </summary>
-        /// <param name="filename">文件名称</param>
+        /// <param name="filePath">文件名称</param>
         /// <param name="remoteFilepath">服务器文件路径</param>
         /// <returns></returns>
-        public static long GetFileSize(string filename, string remoteFilepath)
+        public long GetFileSize(string filePath, string remoteFilepath)
         {
             try
             {
-                FileInfo fi = new FileInfo(filename);
+                FileInfo fi = new FileInfo(filePath);
                 string uri;
                 if (remoteFilepath.Length == 0)
                 {
@@ -347,6 +400,7 @@ namespace Masuit.Tools.Net
                 {
                     uri = "ftp://" + FtpServer + "/" + remoteFilepath + "/" + fi.Name;
                 }
+
                 var reqFtp = (FtpWebRequest)WebRequest.Create(uri);
                 reqFtp.KeepAlive = false;
                 reqFtp.UseBinary = true;
@@ -370,43 +424,42 @@ namespace Masuit.Tools.Net
         /// 获取当前目录下明细(包含文件和文件夹)
         /// </summary>
         /// <returns></returns>
-        public static string[] GetFilesDetails()
+        public List<string> GetFilesDetails(string relativePath = "")
         {
-            StringBuilder result = new StringBuilder();
-            var ftp = (FtpWebRequest)WebRequest.Create(new Uri(FtpUri));
+            List<string> result = new List<string>();
+            var ftp = (FtpWebRequest)WebRequest.Create(new Uri(Path.Combine("ftp://" + FtpServer, relativePath).Replace("\\", "/")));
             ftp.Credentials = new NetworkCredential(Username, Password);
             ftp.Method = WebRequestMethods.Ftp.ListDirectoryDetails;
             using (WebResponse response = ftp.GetResponse())
             {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream() ?? throw new InvalidOperationException(), Encoding.Default))
+                using (StreamReader reader = new StreamReader(response.GetResponseStream() ?? throw new InvalidOperationException(), Encoding.UTF8))
                 {
                     string line = reader.ReadLine();
                     while (line != null)
                     {
-                        result.Append(line);
-                        result.Append("\n");
+                        result.Add(line);
                         line = reader.ReadLine();
                     }
-                    result.Remove(result.ToString().LastIndexOf("\n", StringComparison.Ordinal), 1);
                 }
             }
-            return result.ToString().Split('\n');
+
+            return result;
         }
 
         /// <summary>
         /// 获取当前目录下文件列表(仅文件)
         /// </summary>
         /// <returns></returns>
-        public static string[] GetFiles(string mask)
+        public List<string> GetFiles(string relativePath = "", string mask = "*.*")
         {
-            StringBuilder result = new StringBuilder();
-            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(FtpUri));
+            var result = new List<string>();
+            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(Path.Combine("ftp://" + FtpServer, relativePath).Replace("\\", "/")));
             reqFtp.UseBinary = true;
             reqFtp.Credentials = new NetworkCredential(Username, Password);
             reqFtp.Method = WebRequestMethods.Ftp.ListDirectory;
             using (WebResponse response = reqFtp.GetResponse())
             {
-                using (StreamReader reader = new StreamReader(response.GetResponseStream() ?? throw new InvalidOperationException(), Encoding.Default))
+                using (StreamReader reader = new StreamReader(response.GetResponseStream() ?? throw new InvalidOperationException(), Encoding.UTF8))
                 {
                     string line = reader.ReadLine();
                     while (line != null)
@@ -416,30 +469,29 @@ namespace Masuit.Tools.Net
                             string temp = mask.Substring(0, mask.IndexOf("*", StringComparison.Ordinal));
                             if (line.Substring(0, temp.Length) == temp)
                             {
-                                result.Append(line);
-                                result.Append("\n");
+                                result.Add(line);
                             }
                         }
                         else
                         {
-                            result.Append(line);
-                            result.Append("\n");
+                            result.Add(line);
                         }
+
                         line = reader.ReadLine();
                     }
-                    result.Remove(result.ToString().LastIndexOf('\n'), 1);
                 }
             }
-            return result.ToString().Split('\n');
+
+            return result;
         }
 
         /// <summary>
         /// 获取当前目录下所有的文件夹列表(仅文件夹)
         /// </summary>
         /// <returns></returns>
-        public static string[] GetDirectories()
+        public string[] GetDirectories(string relativePath)
         {
-            string[] drectory = GetFilesDetails();
+            var drectory = GetFilesDetails(relativePath);
             string m = string.Empty;
             foreach (string str in drectory)
             {
@@ -449,20 +501,24 @@ namespace Masuit.Tools.Net
                     /*判断 Windows 风格*/
                     m += str.Substring(dirPos + 5).Trim() + "\n";
                 }
-                else if (str.Trim().Substring(0, 1).ToUpper() == "D")
+                else if (str.Trim().StartsWith("d"))
                 {
                     /*判断 Unix 风格*/
-                    string dir = str.Substring(54).Trim();
+                    string dir = str.Split(new[] { " " }, StringSplitOptions.RemoveEmptyEntries)[8];
                     if (dir != "." && dir != "..")
                     {
+                        dir = str.Substring(str.IndexOf(dir, StringComparison.Ordinal));
                         m += dir + "\n";
                     }
                 }
             }
-            char[] n = { '\n' };
+
+            char[] n =
+            {
+                '\n'
+            };
             return m.Split(n);
         }
-
         #endregion
 
         #region 删除文件及文件夹
@@ -470,10 +526,10 @@ namespace Masuit.Tools.Net
         /// <summary>
         /// 删除文件
         /// </summary>
-        /// <param name="fileName"></param>
-        public static void Delete(string fileName)
+        /// <param name="filePath"></param>
+        public void Delete(string filePath)
         {
-            string uri = FtpUri + fileName;
+            string uri = Path.Combine("ftp://" + FtpServer, filePath).Replace("\\", "/");
             var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(uri));
 
             reqFtp.Credentials = new NetworkCredential(Username, Password);
@@ -495,10 +551,10 @@ namespace Masuit.Tools.Net
         /// <summary>
         /// 删除文件夹
         /// </summary>
-        /// <param name="folderName"></param>
-        public static void RemoveDirectory(string folderName)
+        /// <param name="dirPath"></param>
+        public void RemoveDirectory(string dirPath)
         {
-            string uri = FtpUri + folderName;
+            string uri = Path.Combine("ftp://" + FtpServer, dirPath).Replace("\\", "/");
             var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(uri));
             reqFtp.Credentials = new NetworkCredential(Username, Password);
             reqFtp.KeepAlive = false;
@@ -522,11 +578,11 @@ namespace Masuit.Tools.Net
         /// <summary>
         /// 获取指定文件大小
         /// </summary>
-        /// <param name="filename"></param>
+        /// <param name="filePath"></param>
         /// <returns></returns>
-        public static long GetFileSize(string filename)
+        public long GetFileSize(string filePath)
         {
-            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(FtpUri + filename));
+            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(Path.Combine("ftp://" + FtpServer, filePath).Replace("\\", "/")));
             reqFtp.Method = WebRequestMethods.Ftp.GetFileSize;
             reqFtp.UseBinary = true;
             reqFtp.Credentials = new NetworkCredential(Username, Password);
@@ -540,19 +596,20 @@ namespace Masuit.Tools.Net
         /// <summary>
         /// 判断当前目录下指定的子目录是否存在
         /// </summary>
-        /// <param name="remoteDirectoryName">指定的目录名</param>
-        public bool DirectoryExist(string remoteDirectoryName)
+        /// <param name="remoteDirPath">指定的目录名</param>
+        public bool DirectoryExist(string remoteDirPath)
         {
             try
             {
-                string[] dirList = GetDirectories();
+                string[] dirList = GetDirectories(remoteDirPath);
                 foreach (string str in dirList)
                 {
-                    if (str.Trim() == remoteDirectoryName.Trim())
+                    if (str.Trim() == remoteDirPath.Trim())
                     {
                         return true;
                     }
                 }
+
                 return false;
             }
             catch
@@ -567,7 +624,7 @@ namespace Masuit.Tools.Net
         /// <param name="remoteFileName">远程文件名</param>
         public bool FileExist(string remoteFileName)
         {
-            string[] fileList = GetFiles("*.*");
+            var fileList = GetFiles("*.*");
             foreach (string str in fileList)
             {
                 if (str.Trim() == remoteFileName.Trim())
@@ -575,17 +632,19 @@ namespace Masuit.Tools.Net
                     return true;
                 }
             }
+
             return false;
         }
 
         /// <summary>
         /// 创建文件夹
         /// </summary>
-        /// <param name="dirName"></param>
-        public void MakeDir(string dirName)
+        /// <param name="relativePath">路径</param>
+        /// <param name="newDir">新建文件夹</param>
+        public void MakeDir(string relativePath, string newDir)
         {
             // dirName = name of the directory to create.
-            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(FtpUri + dirName));
+            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(Path.Combine("ftp://" + FtpServer, relativePath, newDir).Replace("\\", "/")));
             reqFtp.Method = WebRequestMethods.Ftp.MakeDirectory;
             reqFtp.UseBinary = true;
             reqFtp.Credentials = new NetworkCredential(Username, Password);
@@ -600,11 +659,12 @@ namespace Masuit.Tools.Net
         /// <summary>
         /// 改名
         /// </summary>
+        /// <param name="relativePath">相对路径</param>
         /// <param name="currentFilename"></param>
         /// <param name="newFilename"></param>
-        public void Rename(string currentFilename, string newFilename)
+        public void Rename(string relativePath, string currentFilename, string newFilename)
         {
-            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(FtpUri + currentFilename));
+            var reqFtp = (FtpWebRequest)WebRequest.Create(new Uri(Path.Combine("ftp://" + FtpServer, relativePath, currentFilename).Replace("\\", "/")));
             reqFtp.Method = WebRequestMethods.Ftp.Rename;
             reqFtp.RenameTo = newFilename;
             reqFtp.UseBinary = true;
@@ -620,31 +680,13 @@ namespace Masuit.Tools.Net
         /// <summary>
         /// 移动文件
         /// </summary>
+        /// <param name="relativePath">相对路径</param>
         /// <param name="currentFilename"></param>
         /// <param name="newDirectory"></param>
-        public void MoveFile(string currentFilename, string newDirectory)
+        public void MoveFile(string relativePath, string currentFilename, string newDirectory)
         {
-            Rename(currentFilename, newDirectory);
+            Rename(relativePath, currentFilename, newDirectory);
         }
-
-        /// <summary>
-        /// 切换当前目录
-        /// </summary>
-        /// <param name="directoryName"></param>
-        /// <param name="isRoot">true 绝对路径 false 相对路径</param>
-        public void GotoDirectory(string directoryName, bool isRoot)
-        {
-            if (isRoot)
-            {
-                _ftpRemotePath = directoryName;
-            }
-            else
-            {
-                _ftpRemotePath += directoryName + "/";
-            }
-            FtpUri = "ftp://" + FtpServer + "/" + _ftpRemotePath + "/";
-        }
-
         #endregion
     }
 }

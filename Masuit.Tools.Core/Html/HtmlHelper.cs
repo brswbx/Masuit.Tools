@@ -1,14 +1,15 @@
-﻿using System;
+﻿using Masuit.Tools.Win32;
+using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net;
+using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading;
 using System.Web;
-using Masuit.Tools.Win32;
 
-namespace Masuit.Tools.Core.Html
+namespace Masuit.Tools.Html
 {
     /// <summary>
     ///1、获取HTML<br/>
@@ -40,55 +41,6 @@ namespace Masuit.Tools.Core.Html
     /// </summary>
     public static partial class HtmlTools
     {
-        #region 私有字段
-        private static CookieContainer cc = new CookieContainer();
-        private static string contentType = "application/x-www-form-urlencoded";
-        private static string accept = "image/gif, image/x-xbitmap, image/jpeg, image/pjpeg," +
-                                       " application/x-shockwave-flash, application/x-silverlight, " +
-                                       "application/vnd.ms-excel, application/vnd.ms-powerpoint, " +
-                                       "application/msword, application/x-ms-application," +
-                                       " application/x-ms-xbap," +
-                                       " application/vnd.ms-xpsdocument, application/xaml+xml, application/x-silverlight-2-b1, */*";
-        private static string userAgent = "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1;" +
-                                          " .NET CLR 2.0.50727; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022)";
-        private static int delay = 1000;
-        private static int currentTry = 0;
-        #endregion
-
-        #region 公有属性
-        /// <summary> 
-        /// Cookie容器
-        /// </summary> 
-        public static CookieContainer CookieContainer
-        {
-            get { return cc; }
-        }
-
-        /// <summary> 
-        /// 获取网页源码时使用的编码
-        /// </summary> 
-        public static Encoding Encoding { get; set; } = Encoding.GetEncoding("utf-8");
-
-        /// <summary>
-        /// 网络延迟
-        /// </summary>
-        public static int NetworkDelay
-        {
-            get
-            {
-                Random r = new Random();
-                return r.Next(delay, delay * 2);
-                // return (r.Next(delay / 1000, delay / 1000 * 2)) * 1000;
-            }
-            set { delay = value; }
-        }
-
-        /// <summary>
-        /// 最大尝试次数
-        /// </summary>
-        public static int MaxTry { get; set; } = 300;
-        #endregion
-
         #region 1、获取HTML
 
         /// <summary>
@@ -105,79 +57,8 @@ namespace Masuit.Tools.Core.Html
             {
                 return strText.Substring(0, length);
             }
+
             return strText;
-        }
-
-        /// <summary>
-        /// 获取指定页面的HTML代码
-        /// </summary>
-        /// <param name="_"></param>
-        /// <param name="url">指定页面的路径</param>
-        /// <param name="postData">post 提交的字符串</param>
-        /// <param name="isPost">是否以post方式发送请求</param>
-        /// <param name="cookieContainer">Cookie集合</param>
-        public static string GetHtml(this HttpWebRequest _, string url, string postData, bool isPost, CookieContainer cookieContainer)
-        {
-            if (string.IsNullOrEmpty(postData))
-            {
-                return GetHtml(null, url, cookieContainer);
-            }
-            Thread.Sleep(NetworkDelay);
-            currentTry++;
-            HttpWebRequest httpWebRequest = null;
-            HttpWebResponse httpWebResponse = null;
-            try
-            {
-                byte[] byteRequest = Encoding.Default.GetBytes(postData);
-
-                httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
-                httpWebRequest.CookieContainer = cookieContainer;
-                httpWebRequest.ContentType = contentType;
-                httpWebRequest.ServicePoint.ConnectionLimit = MaxTry;
-                httpWebRequest.Referer = url;
-                httpWebRequest.Accept = accept;
-                httpWebRequest.UserAgent = userAgent;
-                httpWebRequest.Method = isPost ? "POST" : "GET";
-                httpWebRequest.ContentLength = byteRequest.Length;
-
-                httpWebRequest.AllowAutoRedirect = false;
-
-                Stream stream = httpWebRequest.GetRequestStream();
-                stream.Write(byteRequest, 0, byteRequest.Length);
-                stream.Close();
-
-                try
-                {
-                    httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-                    //redirectURL = httpWebResponse.Headers["Location"];// Get redirected uri
-                }
-                catch (WebException ex)
-                {
-                    httpWebResponse = (HttpWebResponse)ex.Response;
-                }
-                //httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-
-                Stream responseStream = httpWebResponse.GetResponseStream();
-                StreamReader streamReader = new StreamReader(responseStream, Encoding);
-                string html = streamReader.ReadToEnd();
-                streamReader.Close();
-                responseStream.Close();
-                currentTry = 0;
-                httpWebRequest.Abort();
-                httpWebResponse.Close();
-                return html;
-            }
-            catch (Exception)
-            {
-                if (currentTry <= MaxTry)
-                {
-                    GetHtml(null, url, postData, isPost, cookieContainer);
-                }
-                currentTry--;
-                if (httpWebRequest != null) httpWebRequest.Abort();
-                if (httpWebResponse != null) httpWebResponse.Close();
-                return string.Empty;
-            }
         }
 
         /// <summary>
@@ -185,43 +66,25 @@ namespace Masuit.Tools.Core.Html
         /// </summary>
         /// <param name="_"></param>
         /// <param name="url">地址</param>
-        /// <param name="cookieContainer">Cookie集合</param>
-        public static string GetHtml(this HttpWebRequest _, string url, CookieContainer cookieContainer)
+        public static string GetHtml(this HttpClient _, string url)
         {
-            Thread.Sleep(NetworkDelay);
-            currentTry++;
-            HttpWebRequest httpWebRequest = null;
-            HttpWebResponse httpWebResponse = null;
-            try
+            return _.GetAsync(url).ContinueWith(task =>
             {
-                httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
-                httpWebRequest.CookieContainer = cookieContainer;
-                httpWebRequest.ContentType = contentType;
-                httpWebRequest.ServicePoint.ConnectionLimit = MaxTry;
-                httpWebRequest.Referer = url;
-                httpWebRequest.Accept = accept;
-                httpWebRequest.UserAgent = userAgent;
-                httpWebRequest.Method = "GET";
-                httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-                Stream responseStream = httpWebResponse.GetResponseStream();
-                StreamReader streamReader = new StreamReader(responseStream, Encoding);
-                string html = streamReader.ReadToEnd();
-                streamReader.Close();
-                responseStream.Close();
-                currentTry--;
-                httpWebRequest.Abort();
-                httpWebResponse.Close();
-                return html;
-            }
-            catch (Exception)
-            {
-                if (currentTry <= MaxTry) GetHtml(null, url, cookieContainer);
-                currentTry--;
-                if (httpWebRequest != null) httpWebRequest.Abort();
-                if (httpWebResponse != null) httpWebResponse.Close();
+                if (task.IsCanceled || task.IsFaulted)
+                {
+                    return string.Empty;
+                }
+
+                var resp = task.Result;
+                if (resp.IsSuccessStatusCode)
+                {
+                    return resp.Content.ReadAsStringAsync().Result;
+                }
+
                 return string.Empty;
-            }
+            }).Result;
         }
+
         #endregion
 
         #region 2、获取字符流
@@ -237,50 +100,25 @@ namespace Masuit.Tools.Core.Html
         /// ---------------------------------------------------------------------------------------------------------------
         /// <param name="_"></param>
         /// <param name="url">地址</param>
-        ///  <param name="cookieContainer">cookieContainer</param>
-        public static Stream GetStream(this HttpWebRequest _, string url, CookieContainer cookieContainer)
+        public static Stream GetStream(this HttpClient _, string url)
         {
-            currentTry++;
-
-            HttpWebRequest httpWebRequest = null;
-            HttpWebResponse httpWebResponse = null;
-
-            try
+            return _.GetAsync(url).ContinueWith(task =>
             {
-                httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
-                httpWebRequest.CookieContainer = cookieContainer;
-                httpWebRequest.ContentType = contentType;
-                httpWebRequest.ServicePoint.ConnectionLimit = MaxTry;
-                httpWebRequest.Referer = url;
-                httpWebRequest.Accept = accept;
-                httpWebRequest.UserAgent = userAgent;
-                httpWebRequest.Method = "GET";
-
-                httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-                Stream responseStream = httpWebResponse.GetResponseStream();
-                currentTry--;
-                return responseStream;
-            }
-            catch (Exception)
-            {
-                if (currentTry <= MaxTry)
+                if (task.IsCanceled || task.IsFaulted)
                 {
-                    GetHtml(null, url, cookieContainer);
+                    return null;
                 }
 
-                currentTry--;
+                var resp = task.Result;
+                if (resp.IsSuccessStatusCode)
+                {
+                    return resp.Content.ReadAsStreamAsync().Result;
+                }
 
-                if (httpWebRequest != null)
-                {
-                    httpWebRequest.Abort();
-                }
-                if (httpWebResponse != null)
-                {
-                    httpWebResponse.Close();
-                }
                 return null;
-            }
+            }).Result;
         }
+
         #endregion
 
         #region 3、清除HTML标记
@@ -293,9 +131,9 @@ namespace Masuit.Tools.Core.Html
         public static string ClearHtml(this string html)
         {
             string s = Regex.Match(Regex.Replace(html, @"background-color:#?\w{3,7}|font-family:'?[\w|\(|\)]*'?;?", string.Empty), @"<body[^>]*>([\s\S]*)<\/body>").Groups[1].Value.Replace("&#xa0;", string.Empty);
-            s = Regex.Replace(s, @"\w+-?\w+:0\w+;?", string.Empty);//去除多余的零值属性
-            s = Regex.Replace(s, "alt=\"(.+?)\"", string.Empty);//除去alt属性
-            s = Regex.Replace(s, @"-aw.+?\s", string.Empty);//去除Word产生的-aw属性
+            s = Regex.Replace(s, @"\w+-?\w+:0\w+;?", string.Empty); //去除多余的零值属性
+            s = Regex.Replace(s, "alt=\"(.+?)\"", string.Empty); //除去alt属性
+            s = Regex.Replace(s, @"-aw.+?\s", string.Empty); //去除Word产生的-aw属性
             return s;
         }
 
@@ -307,25 +145,24 @@ namespace Masuit.Tools.Core.Html
         public static string RemoveHtml(this string htmlstring)
         {
             //删除脚本   
-            htmlstring = Regex.Replace(htmlstring, @"<script[^>]*?>.*?</script>", "", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "<script[^>]*?>.*?</script>", "", RegexOptions.IgnoreCase);
 
             //删除HTML   
             Regex regex = new Regex("<.+?>", RegexOptions.IgnoreCase);
             htmlstring = regex.Replace(htmlstring, "");
-            htmlstring = Regex.Replace(htmlstring, @"<(.[^>]*)>", "", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "<(.[^>]*)>", "", RegexOptions.IgnoreCase);
             htmlstring = Regex.Replace(htmlstring, @"([\r\n])[\s]+", "", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"-->", "", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"<!--.*", "", RegexOptions.IgnoreCase);
-
-            htmlstring = Regex.Replace(htmlstring, @"&(quot|#34);", "\"", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(amp|#38);", "&", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(lt|#60);", "<", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(gt|#62);", ">", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(nbsp|#160);", "   ", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(iexcl|#161);", "\xa1", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(cent|#162);", "\xa2", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(pound|#163);", "\xa3", RegexOptions.IgnoreCase);
-            htmlstring = Regex.Replace(htmlstring, @"&(copy|#169);", "\xa9", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "-->", "", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "<!--.*", "", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(quot|#34);", "\"", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(amp|#38);", "&", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(lt|#60);", "<", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(gt|#62);", ">", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(nbsp|#160);", "   ", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(iexcl|#161);", "\xa1", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(cent|#162);", "\xa2", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(pound|#163);", "\xa3", RegexOptions.IgnoreCase);
+            htmlstring = Regex.Replace(htmlstring, "&(copy|#169);", "\xa9", RegexOptions.IgnoreCase);
             htmlstring = Regex.Replace(htmlstring, @"&#(\d+);", "", RegexOptions.IgnoreCase);
 
             htmlstring.Replace("<", "");
@@ -338,7 +175,9 @@ namespace Masuit.Tools.Core.Html
         #endregion
 
         #region 4、匹配页面的链接
+
         #region 4.1获取页面的链接正则
+
         /// <summary>
         /// 4.1获取页面的链接正则
         /// </summary>
@@ -351,11 +190,14 @@ namespace Masuit.Tools.Core.Html
             {
                 MatchVale += (m.Value).ToLower().Replace("href=", "").Trim() + "|";
             }
+
             return MatchVale;
         }
+
         #endregion
 
         #region  4.2取得所有链接URL
+
         /// <summary>
         /// 4.2取得所有链接URL
         /// </summary>
@@ -370,11 +212,14 @@ namespace Masuit.Tools.Core.Html
                 sb.AppendLine(m.Result("$1"));
                 m.NextMatch();
             }
+
             return sb.ToString();
         }
+
         #endregion
 
         #region 4.3获取所有连接文本
+
         /// <summary>
         /// 4.3获取所有连接文本
         /// </summary>
@@ -393,7 +238,9 @@ namespace Masuit.Tools.Core.Html
 
             return sb.ToString();
         }
+
         #endregion
+
         #endregion
 
         #region  5、匹配页面的图片地址
@@ -407,22 +254,6 @@ namespace Masuit.Tools.Core.Html
         public static string ReplaceHtmlImgSource(this string html, string imgDest) => html.Replace("<img src=\"", "<img src=\"" + imgDest + "/");
 
         /// <summary>
-        /// 匹配页面的图片地址
-        /// </summary>
-        /// <param name="htmlCode">html代码</param>
-        /// <param name="imgHttp">要补充的http://路径信息</param>
-        public static string GetImgSrc(this string htmlCode, string imgHttp)
-        {
-            string matchVale = "";
-            string Reg = @"<img.+?>";
-            foreach (Match m in Regex.Matches(htmlCode.ToLower(), Reg))
-            {
-                matchVale += GetImg((m.Value).ToLower().Trim(), imgHttp) + "|";
-            }
-            return matchVale;
-        }
-
-        /// <summary>
         /// 将src的绝对路径换成相对路径
         /// </summary>
         /// <param name="s"></param>
@@ -432,20 +263,34 @@ namespace Masuit.Tools.Core.Html
             return Regex.Replace(s, @"<img src=""(http:\/\/.+?)/", @"<img src=""/");
         }
 
+        private static readonly Regex ImgRegex = new Regex(@"<img\b[^<>]*?\bsrc[\s\t\r\n]*=[\s\t\r\n]*[""']?[\s\t\r\n]*(?<src>[^\s\t\r\n""'<>]*)[^<>]*?/?[\s\t\r\n]*>");
 
         /// <summary>
         /// 匹配html的所有img标签集合
         /// </summary>
         /// <param name="html"></param>
         /// <returns></returns>
-        public static MatchCollection MatchImgTags(this string html) => Regex.Matches(html, @"<img[\s]+src[\s]*=[\s]*((['""](?<src>[^'""]*)[\'""])|(?<src>[^\s]*))");
+        public static MatchCollection MatchImgTags(this string html) => ImgRegex.Matches(html);
+
+        /// <summary>
+        /// 匹配html的所有img标签的src集合
+        /// </summary>
+        /// <param name="html"></param>
+        /// <returns></returns>
+        public static IEnumerable<string> MatchImgSrcs(this string html)
+        {
+            foreach (Match m in ImgRegex.Matches(html))
+            {
+                yield return m.Groups["src"].Value;
+            }
+        }
 
         /// <summary>
         /// 匹配html的一个img标签
         /// </summary>
         /// <param name="html"></param>
         /// <returns></returns>
-        public static Match MatchImgTag(this string html) => Regex.Match(html, @"<img[\s]+src[\s]*=[\s]*((['""](?<src>[^'""]*)[\'""])|(?<src>[^\s]*))");
+        public static Match MatchImgTag(this string html) => ImgRegex.Match(html);
 
         /// <summary>
         /// 获取html中第一个img标签的src
@@ -454,12 +299,13 @@ namespace Masuit.Tools.Core.Html
         /// <returns></returns>
         public static string MatchFirstImgSrc(this string html)
         {
-            string src = Regex.Match(html, @"<img\s+[^>]*\s*src\s*=\s*['""]?(\S+\.\w{3,4})['""]?[^>]*>").Groups[1].Value;
+            string src = ImgRegex.Match(html).Groups["src"].Value;
             int index = src.IndexOf("\"", StringComparison.Ordinal);
             if (index > 0)
             {
                 src = src.Substring(0, index);
             }
+
             return src;
         }
 
@@ -470,39 +316,22 @@ namespace Masuit.Tools.Core.Html
         /// <returns></returns>
         public static string MatchRandomImgSrc(this string html)
         {
-            MatchCollection collection = Regex.Matches(html, @"<img\s+[^>]*\s*src\s*=\s*['""]?(\S+\.\w{3,4})['""]?[^>]*>");
+            var collection = ImgRegex.Matches(html);
             if (collection.Count > 0)
             {
-                string src = collection[new Random().StrictNext(collection.Count)].Groups[1].Value;
+                string src = collection[new Random().StrictNext(collection.Count)].Groups["src"].Value;
                 int index = src.IndexOf("\"", StringComparison.Ordinal);
                 if (index > 0)
                 {
                     src = src.Substring(0, index);
                 }
+
                 return src;
             }
-            return String.Empty;
+
+            return string.Empty;
         }
 
-        /// <summary>
-        /// 匹配<img src="" />中的图片路径实际链接
-        /// </summary>
-        /// <param name="imgString"><img src="" />字符串</param>
-        /// <param name="imgHttp">图片路径</param>
-        public static string GetImg(this string imgString, string imgHttp)
-        {
-            string matchVale = "";
-            string Reg = @"src=.+\.(bmp|jpg|gif|png|)";
-            foreach (Match m in Regex.Matches(imgString.ToLower(), Reg))
-            {
-                matchVale += (m.Value).ToLower().Trim().Replace("src=", "");
-            }
-            if (matchVale.IndexOf(".net") != -1 || matchVale.IndexOf(".com") != -1 || matchVale.IndexOf(".org") != -1 || matchVale.IndexOf(".cn") != -1 || matchVale.IndexOf(".cc") != -1 || matchVale.IndexOf(".info") != -1 || matchVale.IndexOf(".biz") != -1 || matchVale.IndexOf(".tv") != -1)
-            {
-                return matchVale;
-            }
-            return imgHttp + matchVale;
-        }
         #endregion
 
         #region 6、抓取远程页面内容
@@ -527,6 +356,7 @@ namespace Masuit.Tools.Core.Html
                 {
                     sb.Append(sr.ReadLine() + "\r\n");
                 }
+
                 strResult = sb.ToString();
                 hwrs.Close();
             }
@@ -534,6 +364,7 @@ namespace Masuit.Tools.Core.Html
             {
                 strResult = ee.Message;
             }
+
             return strResult;
         }
 
@@ -566,25 +397,30 @@ namespace Masuit.Tools.Core.Html
             {
                 strResult = ex.Message;
             }
+
             return strResult;
         }
+
         #endregion
 
         #region 7、压缩HTML输出
+
         /// <summary>
         /// 7.1压缩HTML输出
         /// </summary>
         /// <param name="html">html</param>
         public static string ZipHtml(this string html)
         {
-            html = Regex.Replace(html, @">\s+?<", "><");//去除HTML中的空白字符
+            html = Regex.Replace(html, @">\s+?<", "><"); //去除HTML中的空白字符
             html = Regex.Replace(html, @"\r\n\s*", "");
             html = Regex.Replace(html, @"<body([\s|\S]*?)>([\s|\S]*?)</body>", @"<body$1>$2</body>", RegexOptions.IgnoreCase);
             return html;
         }
+
         #endregion
 
         #region 8、过滤HTML标签
+
         #region 8.1过滤指定HTML标签
 
         /// <summary>
@@ -600,9 +436,12 @@ namespace Masuit.Tools.Core.Html
                 rStr = Regex.Replace(sTextStr, "<" + htmlStr + "[^>]*>", "", RegexOptions.IgnoreCase);
                 rStr = Regex.Replace(rStr, "</" + htmlStr + ">", "", RegexOptions.IgnoreCase);
             }
+
             return rStr;
         }
+
         #endregion
+
         #region 8.2过滤HTML中的不安全标签
 
         /// <summary>
@@ -616,12 +455,15 @@ namespace Masuit.Tools.Core.Html
             content = Regex.Replace(content, @"(script|frame|form|meta|behavior|style)([\s|:|>])+", "$1.$2", RegexOptions.IgnoreCase);
             return content;
         }
+
         #endregion
+
         #endregion
 
         #region 转换HTML操作
 
         #region HTML转行成TEXT
+
         /// <summary>
         /// HTML转行成TEXT HtmlToTxt(string strHtml)
         /// </summary>
@@ -629,38 +471,42 @@ namespace Masuit.Tools.Core.Html
         /// <returns>普通文本</returns>
         public static string HtmlToTxt(this string strHtml)
         {
-            string[] aryReg ={
-            @"<script[^>]*?>.*?</script>",
-            @"<(\/\s*)?!?((\w+:)?\w+)(\w+(\s*=?\s*(([""'])(\\[""'tbnr]|[^\7])*?\7|\w+)|.{0})|\s)*?(\/\s*)?>",
-            @"([\r\n])[\s]+",
-            @"&(quot|#34);",
-            @"&(amp|#38);",
-            @"&(lt|#60);",
-            @"&(gt|#62);",
-            @"&(nbsp|#160);",
-            @"&(iexcl|#161);",
-            @"&(cent|#162);",
-            @"&(pound|#163);",
-            @"&(copy|#169);",
-            @"&#(\d+);",
-            @"-->",
-            @"<!--.*\n"
+            string[] aryReg =
+            {
+                @"<script[^>]*?>.*?</script>",
+                @"<(\/\s*)?!?((\w+:)?\w+)(\w+(\s*=?\s*(([""'])(\\[""'tbnr]|[^\7])*?\7|\w+)|.{0})|\s)*?(\/\s*)?>",
+                @"([\r\n])[\s]+",
+                @"&(quot|#34);",
+                @"&(amp|#38);",
+                @"&(lt|#60);",
+                @"&(gt|#62);",
+                @"&(nbsp|#160);",
+                @"&(iexcl|#161);",
+                @"&(cent|#162);",
+                @"&(pound|#163);",
+                @"&(copy|#169);",
+                @"&#(\d+);",
+                @"-->",
+                @"<!--.*\n"
             };
 
             string strOutput = strHtml;
-            for (int i = 0; i < aryReg.Length; i++)
+            foreach (var t in aryReg)
             {
-                Regex regex = new Regex(aryReg[i], RegexOptions.IgnoreCase);
+                Regex regex = new Regex(t, RegexOptions.IgnoreCase);
                 strOutput = regex.Replace(strOutput, string.Empty);
             }
+
             strOutput.Replace("<", "");
             strOutput.Replace(">", "");
             strOutput.Replace("\r\n", "");
             return strOutput;
         }
+
         #endregion
 
         #region 字符串转换为 Html
+
         /// <summary>
         /// 字符串转换为 HtmlStringToHtml(string str)
         /// </summary>
@@ -679,9 +525,11 @@ namespace Masuit.Tools.Core.Html
             str = str.Replace("\r\n", "<br />");
             return str;
         }
+
         #endregion
 
         #region Html转换成字符串
+
         /// <summary>
         /// html转换成字符串
         /// </summary>
@@ -699,7 +547,9 @@ namespace Masuit.Tools.Core.Html
             strHtml = Regex.Replace(strHtml, @"<\/?[^>]+>", "", RegexOptions.IgnoreCase);
             return strHtml;
         }
+
         #endregion
+
         #endregion
 
         #region 获取URL编码
@@ -712,103 +562,38 @@ namespace Masuit.Tools.Core.Html
         /// <returns>编码类型</returns>
         public static string GetEncoding(this HttpWebRequest _, string url)
         {
-            HttpWebRequest request = null;
-            HttpWebResponse response = null;
-            StreamReader reader = null;
-            try
+            var request = (HttpWebRequest)WebRequest.Create(url);
+            request.Timeout = 20000;
+            request.AllowAutoRedirect = false;
+            using (var response = (HttpWebResponse)request.GetResponse())
             {
-                request = (HttpWebRequest)WebRequest.Create(url);
-                request.Timeout = 20000;
-                request.AllowAutoRedirect = false;
-                response = (HttpWebResponse)request.GetResponse();
-                if (response.StatusCode == HttpStatusCode.OK && response.ContentLength < 1024 * 1024)
+                if (response.StatusCode != HttpStatusCode.OK || response.ContentLength >= 1024 * 1024)
                 {
-                    if (response.ContentEncoding.Equals("gzip", StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        reader = new StreamReader(new GZipStream(response.GetResponseStream(), CompressionMode.Decompress));
-                    }
-                    else
-                    {
-                        reader = new StreamReader(response.GetResponseStream(), Encoding.ASCII);
-                    }
+                    return Encoding.Default.BodyName;
+                }
 
-                    string html = reader.ReadToEnd();
-                    Regex regCharset = new Regex(@"charset\b\s*=\s*(?<charset>[^""]*)");
-                    if (regCharset.IsMatch(html))
-                    {
-                        return regCharset.Match(html).Groups["charset"].Value;
-                    }
-                    else if (response.CharacterSet != string.Empty)
-                    {
-                        return response.CharacterSet;
-                    }
-                    else
-                    {
-                        return Encoding.Default.BodyName;
-                    }
-                }
-            }
-            finally
-            {
-                if (response != null)
+                var reader = response.ContentEncoding.Equals("gzip") ? new StreamReader(new GZipStream(response.GetResponseStream(), CompressionMode.Decompress)) : new StreamReader(response.GetResponseStream(), Encoding.ASCII);
+
+                string html = reader.ReadToEnd();
+                Regex regCharset = new Regex(@"charset\b\s*=\s*(?<charset>[^""]*)");
+                if (regCharset.IsMatch(html))
                 {
-                    response.Close();
-                    response = null;
+                    return regCharset.Match(html).Groups["charset"].Value;
                 }
-                if (reader != null)
-                    reader.Close();
-                if (request != null)
-                    request = null;
+
+                if (response.CharacterSet != string.Empty)
+                {
+                    return response.CharacterSet;
+                }
             }
+
             return Encoding.Default.BodyName;
         }
-        #endregion
 
-        #region 判断URL是否有效
-
-        /// <summary>
-        /// 判断URL是否有效
-        /// </summary>
-        /// <param name="_"></param>
-        /// <param name="url">待判断的URL，可以是网页以及图片链接等</param>
-        /// <returns>200为正确，其余为大致网页错误代码</returns>
-        public static int GetUrlError(this HttpWebRequest _, string url)
-        {
-            int num = 200;
-            try
-            {
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(new Uri(url));
-                ServicePointManager.Expect100Continue = false;
-                ((HttpWebResponse)request.GetResponse()).Close();
-            }
-            catch (WebException exception)
-            {
-                if (exception.Status != WebExceptionStatus.ProtocolError)
-                {
-                    return num;
-                }
-                if (exception.Message.IndexOf("500 ") > 0)
-                {
-                    return 500;
-                }
-                if (exception.Message.IndexOf("401 ") > 0)
-                {
-                    return 401;
-                }
-                if (exception.Message.IndexOf("404") > 0)
-                {
-                    num = 404;
-                }
-            }
-            catch
-            {
-                num = 401;
-            }
-            return num;
-        }
         #endregion
 
         #region 返回 HTML 字符串的编码解码结果
+
         /// <summary>
         /// 返回 HTML 字符串的编码结果
         /// </summary>
@@ -828,6 +613,7 @@ namespace Masuit.Tools.Core.Html
         {
             return HttpUtility.HtmlDecode(str);
         }
+
         #endregion
 
         /// <summary>
@@ -838,7 +624,6 @@ namespace Masuit.Tools.Core.Html
         /// <returns>Cookie键值集合</returns>
         public static CookieCollection GetCookieCollection(this CookieCollection cookie, string cookieString)
         {
-            //string cookieString = "SID=ARRGy4M1QVBtTU-ymi8bL6X8mVkctYbSbyDgdH8inu48rh_7FFxHE6MKYwqBFAJqlplUxq7hnBK5eqoh3E54jqk=;Domain=.google.com;Path=/,LSID=AaMBTixN1MqutGovVSOejyb8mVkctYbSbyDgdH8inu48rh_7FFxHE6MKYwqBFAJqlhCe_QqxLg00W5OZejb_UeQ=;Domain=www.google.com;Path=/accounts";
             Regex re = new Regex("([^;,]+)=([^;,]+);Domain=([^;,]+);Path=([^;,]+)", RegexOptions.IgnoreCase);
             foreach (Match m in re.Matches(cookieString))
             {
@@ -846,6 +631,7 @@ namespace Masuit.Tools.Core.Html
                 Cookie c = new Cookie(m.Groups[1].Value, m.Groups[2].Value, m.Groups[3].Value, m.Groups[3].Value);
                 cookie.Add(c);
             }
+
             return cookie;
         }
 
@@ -862,6 +648,7 @@ namespace Masuit.Tools.Core.Html
 
             return regEx.Replace(HTML, "");
         }
+
         #endregion
 
         #region 获取HTML页面内制定Key的Value内容
@@ -882,8 +669,10 @@ namespace Masuit.Tools.Core.Html
             {
                 result = mc.Groups[1].Value;
             }
+
             return result;
         }
+
         #endregion
 
         /// <summary>
@@ -892,19 +681,13 @@ namespace Masuit.Tools.Core.Html
         /// <param name="str">html</param>
         public static string StrFormat(this string str)
         {
-            string str2;
-            if (str == null)
-            {
-                str2 = "";
-            }
-            else
-            {
-                str = str.Replace("\r\n", "<br />");
-                str = str.Replace("\n", "<br />");
-                str2 = str;
-            }
+            str = str.Replace("\r\n", "<br />");
+            str = str.Replace("\n", "<br />");
+            var str2 = str;
+
             return str2;
         }
+
         /// <summary>
         /// 替换html字符
         /// </summary>
@@ -918,6 +701,7 @@ namespace Masuit.Tools.Core.Html
                 strHtml = strHtml.Replace(";", "&dec");
                 return strHtml;
             }
+
             return "";
         }
 

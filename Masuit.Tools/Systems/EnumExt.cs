@@ -32,6 +32,7 @@ namespace Masuit.Tools.Systems
                 names = GetDictionaryItems(enumType);
                 EnumNameValueDict[enumType] = names;
             }
+
             return names;
         }
 
@@ -44,6 +45,7 @@ namespace Masuit.Tools.Systems
                 int intValue = (int)enumItem.GetValue(enumType);
                 names[intValue] = enumItem.Name;
             }
+
             return names;
         }
 
@@ -61,6 +63,7 @@ namespace Masuit.Tools.Systems
                 values = GetValueNameItems(enumType);
                 EnumValueNameDict[enumType] = values;
             }
+
             return values;
         }
 
@@ -72,6 +75,7 @@ namespace Masuit.Tools.Systems
             {
                 values[enumItem.Name] = (int)enumItem.GetValue(enumType);
             }
+
             return values;
         }
 
@@ -102,6 +106,7 @@ namespace Masuit.Tools.Systems
             {
                 return _enumTypeDict[typeName];
             }
+
             return null;
         }
 
@@ -124,6 +129,7 @@ namespace Masuit.Tools.Systems
             {
                 dicResult.Add(GetDescription(e as Enum), (int)e);
             }
+
             return dicResult;
         }
 
@@ -143,6 +149,7 @@ namespace Masuit.Tools.Systems
                     return attrs[0].Description; //返回当前描述  
                 }
             }
+
             return en.ToString();
         }
 
@@ -162,6 +169,7 @@ namespace Masuit.Tools.Systems
                     return attrs[0].Name; //返回当前描述  
                 }
             }
+
             return en.ToString();
         }
 
@@ -194,6 +202,7 @@ namespace Masuit.Tools.Systems
                     nvc.Add(strValue, field.Name);
                 }
             }
+
             return nvc;
         }
     }

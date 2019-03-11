@@ -1,7 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using Masuit.Tools.Strings;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -257,7 +260,10 @@ namespace Masuit.Tools
         public static TDestination MapTo<TDestination>(this object source) where TDestination : new()
         {
             TDestination dest = new TDestination();
-            dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source)); });
+            dest.GetType().GetProperties().ForEach(p =>
+            {
+                p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source));
+            });
             return dest;
         }
 
@@ -272,7 +278,10 @@ namespace Masuit.Tools
             return await Task.Run(() =>
             {
                 TDestination dest = new TDestination();
-                dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source)); });
+                dest.GetType().GetProperties().ForEach(p =>
+                {
+                    p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source));
+                });
                 return dest;
             });
         }
@@ -294,19 +303,6 @@ namespace Masuit.Tools
         public static async Task<TDestination> MapAsync<TDestination>(this object source) where TDestination : new() => await Task.Run(() => JsonConvert.DeserializeObject<TDestination>(JsonConvert.SerializeObject(source)));
 
         /// <summary>
-        /// 复制一个新的对象
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <param name="source"></param>
-        /// <returns></returns>
-        public static T Copy<T>(this T source) where T : new()
-        {
-            T dest = new T();
-            dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source)); });
-            return dest;
-        }
-
-        /// <summary>
         /// 复制到一个现有对象
         /// </summary>
         /// <typeparam name="T"></typeparam>
@@ -315,7 +311,10 @@ namespace Masuit.Tools
         /// <returns></returns>
         public static T CopyTo<T>(this T source, T dest) where T : new()
         {
-            dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source)); });
+            dest.GetType().GetProperties().ForEach(p =>
+            {
+                p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source));
+            });
             return dest;
         }
 
@@ -325,13 +324,15 @@ namespace Masuit.Tools
         /// <typeparam name="T"></typeparam>
         /// <param name="source"></param>
         /// <returns></returns>
-        public static async Task<T> CopyAsync<T>(this T source) where T : new() =>
-            await Task.Run(() =>
+        public static async Task<T> CopyAsync<T>(this T source) where T : new() => await Task.Run(() =>
+        {
+            T dest = new T();
+            dest.GetType().GetProperties().ForEach(p =>
             {
-                T dest = new T();
-                dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source)); });
-                return dest;
+                p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(source));
             });
+            return dest;
+        });
 
         /// <summary>
         /// 映射到目标类型的集合
@@ -344,7 +345,10 @@ namespace Masuit.Tools
             foreach (var o in source)
             {
                 var dest = new TDestination();
-                dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o)); });
+                dest.GetType().GetProperties().ForEach(p =>
+                {
+                    p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o));
+                });
                 yield return dest;
             }
         }
@@ -363,7 +367,10 @@ namespace Masuit.Tools
                 foreach (var o in source)
                 {
                     var dest = new TDestination();
-                    dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o)); });
+                    dest.GetType().GetProperties().ForEach(p =>
+                    {
+                        p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o));
+                    });
                     list.Add(dest);
                 }
 
@@ -382,7 +389,10 @@ namespace Masuit.Tools
             foreach (var o in source)
             {
                 var dest = new TDestination();
-                dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o)); });
+                dest.GetType().GetProperties().ForEach(p =>
+                {
+                    p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o));
+                });
                 yield return dest;
             }
         }
@@ -401,7 +411,10 @@ namespace Masuit.Tools
                 foreach (var o in source)
                 {
                     var dest = new TDestination();
-                    dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o)); });
+                    dest.GetType().GetProperties().ForEach(p =>
+                    {
+                        p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o));
+                    });
                     list.Add(dest);
                 }
 
@@ -420,7 +433,10 @@ namespace Masuit.Tools
             foreach (var o in source)
             {
                 var dest = new TDestination();
-                dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o)); });
+                dest.GetType().GetProperties().ForEach(p =>
+                {
+                    p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o));
+                });
                 yield return dest;
             }
         }
@@ -439,7 +455,10 @@ namespace Masuit.Tools
                 foreach (var o in source)
                 {
                     var dest = new TDestination();
-                    dest.GetType().GetProperties().ForEach(p => { p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o)); });
+                    dest.GetType().GetProperties().ForEach(p =>
+                    {
+                        p.SetValue(dest, source.GetType().GetProperty(p.Name)?.GetValue(o));
+                    });
                     list.Add(dest);
                 }
 
@@ -454,7 +473,10 @@ namespace Masuit.Tools
         /// </summary>
         /// <param name="source"></param>
         /// <returns></returns>
-        public static string ToJsonString(this object source) => JsonConvert.SerializeObject(source, new JsonSerializerSettings() { ReferenceLoopHandling = ReferenceLoopHandling.Ignore });
+        public static string ToJsonString(this object source) => JsonConvert.SerializeObject(source, new JsonSerializerSettings()
+        {
+            ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+        });
 
         /// <summary>
         /// 转换成json字符串
@@ -1118,6 +1140,21 @@ namespace Masuit.Tools
         }
 
         /// <summary>
+        /// 字符串转long类型
+        /// </summary>
+        /// <param name="str"></param>
+        /// <param name="defaultResult">转换失败的默认值</param>
+        /// <returns></returns>
+        public static long ToLong(this string str, long defaultResult)
+        {
+            if (!long.TryParse(str, out var result))
+            {
+                result = defaultResult;
+            }
+            return result;
+        }
+
+        /// <summary>
         /// 将int转换成double
         /// </summary>
         /// <param name="num">int类型</param>
@@ -1218,7 +1255,7 @@ namespace Masuit.Tools
         /// <returns>匹配对象</returns>
         public static Match MatchUrl(this string s, out bool isMatch)
         {
-            Match match = Regex.Match(s, @"^((\w*):?//)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}(:(\d{1,5}))?(/([a-z0-9A-Z-_@{}!+%/]+(\.\w+)?)?(\?([a-z0-9A-Z-_@{}!+%]+=[a-z0-9A-Z-_@{}!+%]+&?)+)?(/?#[a-z0-9A-Z-_@{}!+%/]+)?(\?([a-z0-9A-Z-_@{}!+%]+=[a-z0-9A-Z-_@{}!+%]*&?)+)?)?$");
+            Match match = Regex.Match(s, @"^((\w*):?//)?([a-zA-Z0-9\-]{0,61}:?[a-zA-Z0-9\-]{0,61}@?)?([a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,6}(:(\d{1,5}))?(/([a-z0-9A-Z-_@{}!+%/]+(\.\w+)?)?(\?([a-z0-9A-Z-_@{}!+%]+=[a-z0-9A-Z-_@{}!+%]+&?)+)?(/?#[a-z0-9A-Z-_@{}!+%/]+)?(\?([a-z0-9A-Z-_@{}!+%]+=[a-z0-9A-Z-_@{}!+%]*&?)+)?)?$");
             isMatch = match.Success;
             return isMatch ? match : null;
         }
@@ -1354,7 +1391,7 @@ namespace Masuit.Tools
             if (s.Contains(":"))
             {
                 //IPv6
-                match = Regex.Match(s, "^((?:(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d)\\.){3}(?:25[0-5]|2[0-4]\\d|[01]?\\d?\\d))$");
+                match = Regex.Match(s, @"^([\da-fA-F]{0,4}:){1,7}[\da-fA-F]{1,4}$");
                 isMatch = match.Success;
             }
             else
@@ -1486,20 +1523,36 @@ namespace Masuit.Tools
         /// 生成唯一短字符串
         /// </summary>
         /// <param name="str"></param>
-        /// <param name="length">生成的字符串长度，越长冲突的概率越小，默认长度为6，最小长度为5，最大长度为22</param>
+        /// <param name="chars">可用字符数数量，0-9,a-z,A-Z</param>
         /// <returns></returns>
-        public static string CreateShortToken(this string str, int length = 6)
+        public static string CreateShortToken(this string str, byte chars = 36)
         {
-            var temp = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Trim('=');
-            if (length <= 22)
-            {
-                if (length < 5)
-                {
-                    length = 5;
-                }
-                temp = temp.Substring(0, length);
-            }
-            return Regex.Replace(temp, @"\p{P}|\+", string.Empty);
+            var nf = new NumberFormater(chars);
+            return nf.ToString((DateTime.Now.Ticks - 630822816000000000) * 100 + Stopwatch.GetTimestamp() % 100);
+        }
+
+        /// <summary>
+        /// 十进制转任意进制
+        /// </summary>
+        /// <param name="num"></param>
+        /// <param name="bin">进制</param>
+        /// <returns></returns>
+        public static string ToBinary(this long num, int bin)
+        {
+            var nf = new NumberFormater(bin);
+            return nf.ToString(num);
+        }
+
+        /// <summary>
+        /// 十进制转任意进制
+        /// </summary>
+        /// <param name="num"></param>
+        /// <param name="bin">进制</param>
+        /// <returns></returns>
+        public static string ToBinary(this int num, int bin)
+        {
+            var nf = new NumberFormater(bin);
+            return nf.ToString(num);
         }
 
         /// <summary>
@@ -1544,6 +1597,86 @@ namespace Masuit.Tools
                 uint end = uint.Parse(ipEnds[0]) << 24 | uint.Parse(ipEnds[1]) << 16 | uint.Parse(ipEnds[2]) << 8 | uint.Parse(ipEnds[3]);
                 uint current = uint.Parse(inputs[0]) << 24 | uint.Parse(inputs[1]) << 16 | uint.Parse(inputs[2]) << 8 | uint.Parse(inputs[3]);
                 return current >= start && current <= end;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// 判断IP是否是私有地址
+        /// </summary>
+        /// <param name="myIPAddress"></param>
+        /// <returns></returns>
+        public static bool IsPrivateIP(this IPAddress myIPAddress)
+        {
+            if (IPAddress.IsLoopback(myIPAddress)) return true;
+            if (myIPAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+            {
+                byte[] ipBytes = myIPAddress.GetAddressBytes();
+                // 10.0.0.0/24 
+                if (ipBytes[0] == 10)
+                {
+                    return true;
+                }
+                // 169.254.0.0/16
+                if (ipBytes[0] == 169 && ipBytes[1] == 254)
+                {
+                    return true;
+                }
+                // 172.16.0.0/16
+                if (ipBytes[0] == 172 && ipBytes[1] == 16)
+                {
+                    return true;
+                }
+                // 192.168.0.0/16
+                if (ipBytes[0] == 192 && ipBytes[1] == 168)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 判断IP是否是私有地址
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <returns></returns>
+        public static bool IsPrivateIP(this string ip)
+        {
+            if (MatchInetAddress(ip))
+            {
+                return IsPrivateIP(IPAddress.Parse(ip));
+            }
+            throw new ArgumentException(ip + " 不是一个合法的ip地址");
+        }
+
+        /// <summary>
+        /// 判断url是否是外部地址
+        /// </summary>
+        /// <param name="url"></param>
+        /// <returns></returns>
+        public static bool IsExternalAddress(this string url)
+        {
+            var uri = new Uri(url);
+            switch (uri.HostNameType)
+            {
+                case UriHostNameType.Dns:
+                    var ipHostEntry = Dns.GetHostEntry(uri.DnsSafeHost);
+                    foreach (IPAddress ipAddress in ipHostEntry.AddressList)
+                    {
+                        if (ipAddress.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                        {
+                            if (!ipAddress.IsPrivateIP())
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                    break;
+
+                case UriHostNameType.IPv4:
+                    return !IPAddress.Parse(uri.DnsSafeHost).IsPrivateIP();
             }
             return false;
         }
